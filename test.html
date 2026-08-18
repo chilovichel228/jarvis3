@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. 2.0 — Голосовой помощник</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f35 50%, #0d1528 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(2px 2px at 20% 30%, rgba(0, 200, 255, 0.3), transparent),
+                radial-gradient(2px 2px at 40% 70%, rgba(100, 0, 255, 0.2), transparent),
+                radial-gradient(2px 2px at 60% 20%, rgba(0, 255, 200, 0.2), transparent),
+                radial-gradient(2px 2px at 80% 80%, rgba(0, 150, 255, 0.2), transparent);
+            animation: float 20s infinite alternate;
+            z-index: 0;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(30px, 20px) rotate(5deg); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            background: rgba(10, 14, 30, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 40px;
+            padding: 35px;
+            max-width: 1000px;
+            width: 100%;
+            border: 1px solid rgba(0, 200, 255, 0.15);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0, 200, 255, 0.08);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            font-size: 2.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .logo-text {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00d4ff, #7b2ffc, #00d4ff);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: gradientMove 3s ease-in-out infinite;
+        }
+
+        @keyframes gradientMove {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .status-dot {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #667799;
+            font-size: 0.9rem;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: blink 1.5s infinite;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .dot.inactive {
+            background: #ff4444;
+            animation: none;
+            box-shadow: 0 0 15px rgba(255, 68, 68, 0.3);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .search-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 14px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(0, 200, 255, 0.2);
+            background: rgba(20, 30, 60, 0.6);
+            color: #c0d0e8;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: #00d4ff;
+            box-shadow: 0 0 30px rgba(0, 200, 255, 0.1);
+            background: rgba(20, 30, 60, 0.8);
+        }
+
+        .search-input::placeholder {
+            color: #556688;
+        }
+
+        .search-btn {
+            padding: 14px 30px;
+            border-radius: 30px;
+            border: none;
+            background: linear-gradient(135deg, #00d4ff, #7b2ffc);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .search-btn:hover {
+            transform: scale(1.03);
+            box-shadow: 0 5px 30px rgba(0, 200, 255, 0.3);
+        }
+
+        .mic-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin: 15px 0 25px;
+            flex-wrap: wrap;
+        }
+
+        .mic-btn {
+            padding: 12px 30px;
+            border-radius: 50px;
+            border: none;
+            background: linear-gradient(135deg, #00d4ff, #0088ff);
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 5px 25px rgba(0, 200, 255, 0.2);
+        }
+
+        .mic-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 40px rgba(0, 200, 255, 0.4);
+        }
+
+        .mic-btn.listening {
+            background: linear-gradient(135deg, #ff4444, #ff6b6b);
+            animation: pulseMic 0.8s infinite;
+        }
+
+        @keyframes pulseMic {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        #status {
+            color: #8899bb;
+            font-size: 1rem;
+            flex: 1;
+            min-height: 30px;
+        }
+
+        #status.success {
+            color: #00ff88;
+        }
+
+        #status.error {
+            color: #ff4444;
+        }
+
+        .categories {
+            display: flex;
+            gap: 8px;
+            margin: 20px 0 15px;
+            flex-wrap: wrap;
+        }
+
+        .category-btn {
+            padding: 6px 18px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 200, 255, 0.15);
+            background: rgba(20, 30, 60, 0.4);
+            color: #7788aa;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .category-btn:hover,
+        .category-btn.active {
+            background: rgba(0, 200, 255, 0.15);
+            border-color: #00d4ff;
+            color: #00d4ff;
+        }
+
+        .site-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .site-grid::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .site-grid::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+        }
+
+        .site-grid::-webkit-scrollbar-thumb {
+            background: rgba(0, 200, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        .site-card {
+            background: rgba(20, 30, 60, 0.5);
+            border: 1px solid rgba(0, 200, 255, 0.08);
+            border-radius: 16px;
+            padding: 14px 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #aabbdd;
+            font-size: 0.85rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .site-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 200, 255, 0.05), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .site-card:hover::before {
+            opacity: 1;
+        }
+
+        .site-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(0, 200, 255, 0.3);
+            background: rgba(20, 40, 80, 0.6);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .site-card:active {
+            transform: scale(0.95);
+        }
+
+        .site-card .icon {
+            font-size: 1.8rem;
+            display: block;
+            margin-bottom: 6px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .site-card .name {
+            position: relative;
+            z-index: 1;
+            font-weight: 500;
+        }
+
+        .site-card .badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            font-size: 0.6rem;
+            background: rgba(0, 200, 255, 0.15);
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: #6688aa;
+        }
+
+        .footer-hint {
+            margin-top: 20px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            color: #556688;
+            font-size: 0.85rem;
+        }
+
+        .footer-hint kbd {
+            background: rgba(20, 30, 60, 0.6);
+            padding: 2px 12px;
+            border-radius: 6px;
+            color: #88bbdd;
+            border: 1px solid rgba(0, 200, 255, 0.1);
+            font-family: monospace;
+        }
+
+        .stats {
+            color: #445566;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 20px; }
+            .logo-text { font-size: 1.5rem; }
+            .site-grid { grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); }
+            .search-area { flex-direction: column; }
+            .mic-section { flex-direction: column; align-items: stretch; }
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 15px; border-radius: 24px; }
+            .logo-text { font-size: 1.2rem; }
+            .site-grid { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; }
+            .site-card { padding: 10px 4px; font-size: 0.75rem; }
+            .site-card .icon { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="logo-area">
+            <span class="logo-icon">🦾</span>
+            <span class="logo-text">J.A.R.V.I.S.</span>
+        </div>
+        <div class="status-dot">
+            <span class="dot" id="statusDot"></span>
+            <span id="dotLabel">Готов</span>
+        </div>
+    </div>
+
+    <div class="search-area">
+        <input type="text" class="search-input" id="searchInput" placeholder="🔍 Искать сайт или ввести URL...">
+        <button class="search-btn" id="searchBtn">🔍 Найти</button>
+    </div>
+
+    <div class="mic-section">
+        <button class="mic-btn" id="micBtn">
+            <span>🎤</span> Активировать
+        </button>
+        <div id="status">💬 Скажите: "Открой ВКонтакте" или ищите в поиске</div>
+    </div>
+
+    <div class="categories" id="categories">
+        <button class="category-btn active" data-category="all">Все</button>
+        <button class="category-btn" data-category="social">Соцсети</button>
+        <button class="category-btn" data-category="video">Видео</button>
+        <button class="category-btn" data-category="search">Поиск</button>
+        <button class="category-btn" data-category="dev">Разработка</button>
+        <button class="category-btn" data-category="shop">Магазины</button>
+        <button class="category-btn" data-category="media">Медиа</button>
+        <button class="category-btn" data-category="other">Другое</button>
+    </div>
+
+    <div class="site-grid" id="siteGrid"></div>
+
+    <div class="footer-hint">
+        <span>
+            🎤 <kbd>открой</kbd> + название · 
+            <kbd>гугл</kbd> <kbd>ютуб</kbd> <kbd>вк</kbd>
+        </span>
+        <span class="stats" id="stats">🌐 50+ сайтов</span>
+    </div>
+</div>
+
+<script>
+    const SITE_DB = [
+        // Соцсети
+        { name: 'ВКонтакте', url: 'https://vk.com', icon: '💙', category: 'social', keywords: ['вк', 'контакт'] },
+        { name: 'Одноклассники', url: 'https://ok.ru', icon: '🟠', category: 'social', keywords: ['однокл', 'ок'] },
+        { name: 'Telegram', url: 'https://t.me', icon: '✈️', category: 'social', keywords: ['телеграм', 'тг'] },
+        { name: 'Instagram', url: 'https://instagram.com', icon: '📸', category: 'social', keywords: ['инста', 'инстаграм'] },
+        { name: 'Twitter / X', url: 'https://twitter.com', icon: '🐦', category: 'social', keywords: ['твиттер', 'твит'] },
+        { name: 'Reddit', url: 'https://reddit.com', icon: '🤖', category: 'social', keywords: ['реддит'] },
+        { name: 'TikTok', url: 'https://tiktok.com', icon: '🎵', category: 'social', keywords: ['тикток'] },
+        { name: 'Pinterest', url: 'https://pinterest.com', icon: '📌', category: 'social', keywords: ['пинтерест'] },
+        { name: 'LinkedIn', url: 'https://linkedin.com', icon: '💼', category: 'social', keywords: ['линкедин'] },
+        { name: 'Facebook', url: 'https://facebook.com', icon: '👍', category: 'social', keywords: ['фейсбук', 'фб'] },
+        { name: 'Discord', url: 'https://discord.com', icon: '🎮', category: 'social', keywords: ['дискорд'] },
+        { name: 'Snapchat', url: 'https://snapchat.com', icon: '👻', category: 'social', keywords: ['снапчат'] },
+        { name: 'Twitch', url: 'https://twitch.tv', icon: '🎥', category: 'social', keywords: ['твич'] },
+        { name: 'Tumblr', url: 'https://tumblr.com', icon: '📓', category: 'social', keywords: ['тамблер'] },
+        { name: 'Mastodon', url: 'https://mastodon.social', icon: '🐘', category: 'social', keywords: ['мастодон'] },
+
+        // Видео
+        { name: 'YouTube', url: 'https://youtube.com', icon: '▶️', category: 'video', keywords: ['ютуб', 'туб'] },
+        { name: 'Rutube', url: 'https://rutube.ru', icon: '📺', category: 'video', keywords: ['рутуб'] },
+        { name: 'Vimeo', url: 'https://vimeo.com', icon: '🎬', category: 'video', keywords: ['вимео'] },
+        { name: 'Dailymotion', url: 'https://dailymotion.com', icon: '🎞️', category: 'video', keywords: ['дейлимоушн'] },
+        { name: 'VK Video', url: 'https://vk.com/video', icon: '🎦', category: 'video', keywords: ['вк видео'] },
+
+        // Поисковики
+        { name: 'Google', url: 'https://google.com', icon: '🔍', category: 'search', keywords: ['гугл'] },
+        { name: 'Яндекс', url: 'https://yandex.ru', icon: '🌐', category: 'search', keywords: ['яндекс', 'яша'] },
+        { name: 'DuckDuckGo', url: 'https://duckduckgo.com', icon: '🦆', category: 'search', keywords: ['дакдакго'] },
+        { name: 'Bing', url: 'https://bing.com', icon: '🅱️', category: 'search', keywords: ['бинг'] },
+        { name: 'Yahoo', url: 'https://yahoo.com', icon: '📧', category: 'search', keywords: ['яху'] },
+        { name: 'Mail.ru', url: 'https://mail.ru', icon: '📫', category: 'search', keywords: ['мейл', 'почта'] },
+        { name: 'Rambler', url: 'https://rambler.ru', icon: '🌀', category: 'search', keywords: ['рамблер'] },
+
+        // Разработка
+        { name: 'GitHub', url: 'https://github.com', icon: '🐙', category: 'dev', keywords: ['гитхаб', 'гит'] },
+        { name: 'Stack Overflow', url: 'https://stackoverflow.com', icon: '🧑‍💻', category: 'dev', keywords: ['стек', 'оверфлоу'] },
+        { name: 'GitLab', url: 'https://gitlab.com', icon: '🦊', category: 'dev', keywords: ['гитлаб'] },
+        { name: 'Bitbucket', url: 'https://bitbucket.org', icon: '🔵', category: 'dev', keywords: ['битбакет'] },
+        { name: 'CodePen', url: 'https://codepen.io', icon: '✏️', category: 'dev', keywords: ['кодпен'] },
+        { name: 'JSFiddle', url: 'https://jsfiddle.net', icon: '🎯', category: 'dev', keywords: ['джсфидл'] },
+        { name: 'LeetCode', url: 'https://leetcode.com', icon: '⚡', category: 'dev', keywords: ['литкод'] },
+        { name: 'HackerRank', url: 'https://hackerrank.com', icon: '🏆', category: 'dev', keywords: ['хакерранк'] },
+        { name: 'Codewars', url: 'https://codewars.com', icon: '⚔️', category: 'dev', keywords: ['кодварс'] },
+        { name: 'Docker Hub', url: 'https://hub.docker.com', icon: '🐳', category: 'dev', keywords: ['докер'] },
+        { name: 'NPM', url: 'https://npmjs.com', icon: '📦', category: 'dev', keywords: ['нпм'] },
+        { name: 'PyPI', url: 'https://pypi.org', icon: '🐍', category: 'dev', keywords: ['пайпи'] },
+
+        // Магазины (исправлено!)
+        { name: 'Ozon', url: 'https://ozon.ru', icon: '🛍️', category: 'shop', keywords: ['озон'] },
+        { name: 'Wildberries', url: 'https://wildberries.ru', icon: '🛒', category: 'shop', keywords: ['вайлд', 'вб'] },
+        { name: 'AliExpress', url: 'https://aliexpress.com', icon: '📦', category: 'shop', keywords: ['али', 'экспресс'] },
+        { name: 'Amazon', url: 'https://amazon.com', icon: '🛒', category: 'shop', keywords: ['амазон'] },
+        { name: 'eBay', url: 'https://ebay.com', icon: '🏷️', category: 'shop', keywords: ['ибей'] },
+        { name: 'Avito', url: 'https://avito.ru', icon: '🏪', category: 'shop', keywords: ['авито'] },
+        { name: 'Яндекс Маркет', url: 'https://market.yandex.ru', icon: '🛍️', category: 'shop', keywords: ['маркет'] },
+
+        // Медиа (исправлено Spotify!)
+        { name: 'Spotify', url: 'https://open.spotify.com', icon: '🎵', category: 'media', keywords: ['спотифай', 'спотифи'] },
+        { name: 'SoundCloud', url: 'https://soundcloud.com', icon: '🎧', category: 'media', keywords: ['саундклауд'] },
+        { name: 'Bandcamp', url: 'https://bandcamp.com', icon: '🎶', category: 'media', keywords: ['бэндкэмп'] },
+        { name: 'Wikipedia', url: 'https://wikipedia.org', icon: '📚', category: 'media', keywords: ['вики', 'википедия'] },
+        { name: 'Kinopoisk', url: 'https://kinopoisk.ru', icon: '🎬', category: 'media', keywords: ['кинопоиск', 'кп'] },
+        { name: 'IMDb', url: 'https://imdb.com', icon: '🎞️', category: 'media', keywords: ['имдб'] },
+        { name: 'Medium', url: 'https://medium.com', icon: '✍️', category: 'media', keywords: ['медиум'] },
+        { name: 'Habr', url: 'https://habr.com', icon: '📰', category: 'media', keywords: ['хабр'] },
+        { name: 'VC.ru', url: 'https://vc.ru', icon: '💡', category: 'media', keywords: ['вц'] },
+        { name: 'DTF', url: 'https://dtf.ru', icon: '🎮', category: 'media', keywords: ['дтф'] },
+
+        // Другое
+        { name: 'Gmail', url: 'https://gmail.com', icon: '📧', category: 'other', keywords: ['мейл', 'почта', 'джимейл'] },
+        { name: 'Google Drive', url: 'https://drive.google.com', icon: '☁️', category: 'other', keywords: ['диск', 'драйв'] },
+        { name: 'Google Maps', url: 'https://maps.google.com', icon: '🗺️', category: 'other', keywords: ['карты'] },
+        { name: 'Translate', url: 'https://translate.google.com', icon: '🌍', category: 'other', keywords: ['переводчик'] },
+        { name: 'Notion', url: 'https://notion.so', icon: '📝', category: 'other', keywords: ['ноушн'] },
+        { name: 'Figma', url: 'https://figma.com', icon: '🎨', category: 'other', keywords: ['фигма'] },
+        { name: 'Canva', url: 'https://canva.com', icon: '🖌️', category: 'other', keywords: ['канва'] },
+        { name: 'ChatGPT', url: 'https://chat.openai.com', icon: '🤖', category: 'other', keywords: ['чатгпт', 'gpt'] },
+        { name: 'Claude AI', url: 'https://claude.ai', icon: '🧠', category: 'other', keywords: ['клод'] },
+        { name: 'DeepSeek', url: 'https://chat.deepseek.com', icon: '🤯', category: 'other', keywords: ['дипсик'] },
+        { name: 'СберБанк', url: 'https://sberbank.ru', icon: '🏦', category: 'other', keywords: ['сбер'] },
+        { name: 'Tinkoff', url: 'https://tinkoff.ru', icon: '💳', category: 'other', keywords: ['тинкофф'] },
+    ];
+
+    let currentCategory = 'all';
+    let searchQuery = '';
+
+    const grid = document.getElementById('siteGrid');
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const micBtn = document.getElementById('micBtn');
+    const statusEl = document.getElementById('status');
+    const statusDot = document.getElementById('statusDot');
+    const dotLabel = document.getElementById('dotLabel');
+    const statsEl = document.getElementById('stats');
+
+    // === УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ОТКРЫТИЯ ===
+    function openSite(url, name) {
+        if (!url) return false;
+        
+        // Добавляем https если нет
+        if (!/^https?:\/\//i.test(url)) {
+            url = 'https://' + url;
+        }
+        
+        try {
+            // Пробуем открыть в новой вкладке
+            const win = window.open(url, '_blank');
+            
+            // Если браузер заблокировал (для Spotify и др.)
+            if (!win || win.closed || typeof win.closed === 'undefined') {
+                // Альтернативный способ: меняем location
+                window.location.href = url;
+                return true;
+            }
+            
+            setStatus(`✅ Открываю: ${name || url}`, 'success');
+            return true;
+        } catch (e) {
+            // Если ошибка - пробуем через location
+            try {
+                window.location.href = url;
+                setStatus(`✅ Открываю: ${name || url}`, 'success');
+                return true;
+            } catch (e2) {
+                setStatus(`❌ Не удалось открыть: ${name || url}`, 'error');
+                console.error('Ошибка открытия:', e2);
+                return false;
+            }
+        }
+    }
+
+    function renderSites() {
+        let filtered = SITE_DB;
+
+        if (currentCategory !== 'all') {
+            filtered = filtered.filter(s => s.category === currentCategory);
+        }
+
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase().trim();
+            filtered = filtered.filter(s => {
+                const matchName = s.name.toLowerCase().includes(q);
+                const matchKeywords = s.keywords.some(k => k.includes(q) || q.includes(k));
+                return matchName || matchKeywords;
+            });
+        }
+
+        if (filtered.length === 0) {
+            grid.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; color: #556688; padding: 30px;">
+                    😕 Ничего не найдено<br>
+                    <span style="font-size: 0.85rem;">Попробуйте другой запрос</span>
+                </div>
+            `;
+            statsEl.textContent = '🔍 0 результатов';
+            return;
+        }
+
+        grid.innerHTML = filtered.map(site => `
+            <div class="site-card" data-url="${site.url}" data-name="${site.name}">
+                <span class="icon">${site.icon}</span>
+                <span class="name">${site.name}</span>
+                <span class="badge">${site.category}</span>
+            </div>
+        `).join('');
+
+        document.querySelectorAll('.site-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                const url = this.dataset.url;
+                const name = this.dataset.name;
+                if (url) {
+                    openSite(url, name);
+                }
+            });
+        });
+
+        statsEl.textContent = `🌐 ${filtered.length} сайтов`;
+    }
+
+    function setStatus(text, type = '') {
+        statusEl.textContent = text;
+        statusEl.className = type;
+    }
+
+    function setDotState(active) {
+        if (active) {
+            statusDot.className = 'dot';
+            dotLabel.textContent = 'Слушаю...';
+        } else {
+            statusDot.className = 'dot inactive';
+            dotLabel.textContent = 'Готов';
+        }
+    }
+
+    // === КАТЕГОРИИ ===
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentCategory = this.dataset.category;
+            renderSites();
+        });
+    });
+
+    // === ПОИСК ===
+    function doSearch() {
+        const query = searchInput.value.trim();
+        if (query) {
+            // Проверяем, есть ли такой сайт в базе
+            const found = SITE_DB.find(s => 
+                s.name.toLowerCase().includes(query.toLowerCase()) ||
+                s.keywords.some(k => k.includes(query.toLowerCase()))
+            );
+            
+            if (found) {
+                openSite(found.url, found.name);
+            } else {
+                // Если нет - ищем в Google
+                const searchUrl = `https://google.com/search?q=${encodeURIComponent(query)}`;
+                openSite(searchUrl, `Поиск: ${query}`);
+            }
+        }
+        searchQuery = query;
+        renderSites();
+    }
+
+    searchBtn.addEventListener('click', doSearch);
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doSearch();
+    });
+
+    // === ГОЛОС ===
+    let recognition = null;
+    let isListening = false;
+
+    function initSpeech() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            setStatus('❌ Ваш браузер не поддерживает голосовое управление', 'error');
+            micBtn.disabled = true;
+            micBtn.innerHTML = '⛔ Не поддерживается';
+            return false;
+        }
+
+        recognition = new SpeechRecognition();
+        recognition.lang = 'ru-RU';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+            isListening = true;
+            micBtn.classList.add('listening');
+            micBtn.innerHTML = '🔴 Слушаю...';
+            setDotState(true);
+            setStatus('🎤 Слушаю вашу команду...');
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            micBtn.classList.remove('listening');
+            micBtn.innerHTML = '🎤 Активировать';
+            setDotState(false);
+        };
+
+        recognition.onerror = (event) => {
+            if (event.error === 'not-allowed') {
+                setStatus('❌ Разрешите доступ к микрофону в браузере', 'error');
+            } else if (event.error === 'no-speech') {
+                setStatus('🔇 Речь не обнаружена', 'error');
+            } else {
+                setStatus(`❌ Ошибка: ${event.error}`, 'error');
+            }
+            micBtn.classList.remove('listening');
+            micBtn.innerHTML = '🎤 Активировать';
+            setDotState(false);
+            isListening = false;
+        };
+
+        recognition.onresult = (event) => {
+            const result = event.results[event.results.length - 1];
+            const transcript = result[0].transcript.trim();
+            if (transcript) {
+                handleVoiceCommand(transcript);
+            }
+        };
+
+        return true;
+    }
+
+    function handleVoiceCommand(transcript) {
+        const text = transcript.toLowerCase().trim();
+        console.log('🎤 Распознано:', text);
+        setStatus(`🗣️ Вы сказали: "${text}"`);
+
+        let found = null;
+
+        for (let site of SITE_DB) {
+            const nameLower = site.name.toLowerCase();
+            if (nameLower === text || text.includes(nameLower) || nameLower.includes(text)) {
+                found = site;
+                break;
+            }
+            for (let kw of site.keywords) {
+                if (text.includes(kw) || kw.includes(text)) {
+                    found = site;
+                    break;
+                }
+            }
+            if (found) break;
+        }
+
+        if (found) {
+            openSite(found.url, found.name);
+        } else {
+            // Если не нашли сайт, делаем поиск в Google
+            const query = encodeURIComponent(text);
+            openSite(`https://google.com/search?q=${query}`, `Поиск: ${text}`);
+        }
+    }
+
+    micBtn.addEventListener('click', function() {
+        if (!recognition) {
+            if (!initSpeech()) return;
+        }
+
+        if (isListening) {
+            recognition.stop();
+            return;
+        }
+
+        try {
+            recognition.start();
+        } catch (e) {
+            if (e.name === 'InvalidStateError') {
+                recognition.stop();
+                setTimeout(() => recognition.start(), 200);
+            }
+        }
+    });
+
+    // === СТАРТ ===
+    renderSites();
+    initSpeech();
+</script>
+</body>
+</html>

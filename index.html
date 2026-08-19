@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. 6.0 — Голосовой помощник</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f35 50%, #0d1528 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(2px 2px at 20% 30%, rgba(0, 200, 255, 0.4), transparent),
+                radial-gradient(2px 2px at 40% 70%, rgba(100, 0, 255, 0.3), transparent),
+                radial-gradient(2px 2px at 60% 20%, rgba(0, 255, 200, 0.3), transparent),
+                radial-gradient(2px 2px at 80% 80%, rgba(0, 150, 255, 0.3), transparent);
+            animation: float 20s infinite alternate;
+            z-index: 0;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(30px, 20px) rotate(5deg); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            background: rgba(10, 14, 30, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 40px;
+            padding: 35px;
+            max-width: 1100px;
+            width: 100%;
+            border: 1px solid rgba(0, 200, 255, 0.15);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0, 200, 255, 0.08);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            font-size: 2.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .logo-text {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00d4ff, #7b2ffc, #00d4ff);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: gradientMove 3s ease-in-out infinite;
+        }
+
+        @keyframes gradientMove {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .voice-select {
+            padding: 8px 16px;
+            border-radius: 30px;
+            border: 1px solid rgba(0, 200, 255, 0.2);
+            background: rgba(20, 30, 60, 0.6);
+            color: #c0d0e8;
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .voice-select:focus {
+            border-color: #00d4ff;
+        }
+
+        .voice-select option {
+            background: #1a1f35;
+            color: #c0d0e8;
+        }
+
+        .status-dot {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #667799;
+            font-size: 0.9rem;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: blink 1.5s infinite;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .dot.inactive {
+            background: #ff4444;
+            animation: none;
+            box-shadow: 0 0 15px rgba(255, 68, 68, 0.3);
+        }
+
+        .dot.listening {
+            background: #ffaa00;
+            animation: blinkFast 0.5s infinite;
+            box-shadow: 0 0 30px rgba(255, 170, 0, 0.5);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        @keyframes blinkFast {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.3); }
+        }
+
+        .search-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 14px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(0, 200, 255, 0.2);
+            background: rgba(20, 30, 60, 0.6);
+            color: #c0d0e8;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: #00d4ff;
+            box-shadow: 0 0 30px rgba(0, 200, 255, 0.1);
+            background: rgba(20, 30, 60, 0.8);
+        }
+
+        .search-input::placeholder {
+            color: #556688;
+        }
+
+        .search-btn {
+            padding: 14px 30px;
+            border-radius: 30px;
+            border: none;
+            background: linear-gradient(135deg, #00d4ff, #7b2ffc);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .search-btn:hover {
+            transform: scale(1.03);
+            box-shadow: 0 5px 30px rgba(0, 200, 255, 0.3);
+        }
+
+        .mic-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin: 15px 0 25px;
+            flex-wrap: wrap;
+        }
+
+        .mic-btn {
+            padding: 12px 30px;
+            border-radius: 50px;
+            border: none;
+            background: linear-gradient(135deg, #00d4ff, #0088ff);
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 5px 25px rgba(0, 200, 255, 0.2);
+        }
+
+        .mic-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 40px rgba(0, 200, 255, 0.4);
+        }
+
+        .mic-btn.listening {
+            background: linear-gradient(135deg, #ff6b35, #ff4444);
+            animation: pulseMic 0.8s infinite;
+        }
+
+        @keyframes pulseMic {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        #status {
+            color: #8899bb;
+            font-size: 1rem;
+            flex: 1;
+            min-height: 30px;
+        }
+
+        #status.success {
+            color: #00ff88;
+        }
+
+        #status.error {
+            color: #ff4444;
+        }
+
+        #status.processing {
+            color: #ffaa00;
+        }
+
+        .timer-display {
+            background: rgba(0, 200, 255, 0.05);
+            border: 1px solid rgba(0, 200, 255, 0.1);
+            border-radius: 20px;
+            padding: 10px 20px;
+            margin: 10px 0 15px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .timer-display.active {
+            display: flex;
+        }
+
+        .timer-display .time {
+            color: #00d4ff;
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: monospace;
+        }
+
+        .timer-display .label {
+            color: #8899bb;
+            font-size: 0.9rem;
+        }
+
+        .timer-display .cancel-btn {
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 68, 68, 0.3);
+            background: rgba(255, 68, 68, 0.1);
+            color: #ff6666;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.85rem;
+        }
+
+        .timer-display .cancel-btn:hover {
+            background: rgba(255, 68, 68, 0.2);
+        }
+
+        .categories {
+            display: flex;
+            gap: 8px;
+            margin: 20px 0 15px;
+            flex-wrap: wrap;
+        }
+
+        .category-btn {
+            padding: 6px 18px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 200, 255, 0.15);
+            background: rgba(20, 30, 60, 0.4);
+            color: #7788aa;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .category-btn:hover,
+        .category-btn.active {
+            background: rgba(0, 200, 255, 0.15);
+            border-color: #00d4ff;
+            color: #00d4ff;
+        }
+
+        .site-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .site-grid::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .site-grid::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+        }
+
+        .site-grid::-webkit-scrollbar-thumb {
+            background: rgba(0, 200, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        .site-card {
+            background: rgba(20, 30, 60, 0.5);
+            border: 1px solid rgba(0, 200, 255, 0.08);
+            border-radius: 16px;
+            padding: 14px 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #aabbdd;
+            font-size: 0.85rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .site-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(0, 200, 255, 0.3);
+            background: rgba(20, 40, 80, 0.6);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .site-card:active {
+            transform: scale(0.95);
+        }
+
+        .site-card .icon {
+            font-size: 1.8rem;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .site-card .name {
+            font-weight: 500;
+        }
+
+        .site-card .badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            font-size: 0.6rem;
+            background: rgba(0, 200, 255, 0.15);
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: #6688aa;
+        }
+
+        .commands-hint {
+            margin-top: 20px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            color: #556688;
+            font-size: 0.8rem;
+        }
+
+        .commands-hint kbd {
+            background: rgba(20, 30, 60, 0.6);
+            padding: 2px 12px;
+            border-radius: 6px;
+            color: #88bbdd;
+            border: 1px solid rgba(0, 200, 255, 0.1);
+            font-family: monospace;
+            font-size: 0.75rem;
+        }
+
+        .commands-hint .cmd-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .stats {
+            color: #445566;
+            font-size: 0.8rem;
+            margin-left: auto;
+        }
+
+        .speaking {
+            animation: speakPulse 0.5s ease-in-out;
+        }
+
+        @keyframes speakPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1) rotate(-5deg); }
+            100% { transform: scale(1); }
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 20px; }
+            .logo-text { font-size: 1.5rem; }
+            .site-grid { grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); }
+            .search-area { flex-direction: column; }
+            .mic-section { flex-direction: column; align-items: stretch; }
+            .header { flex-direction: column; align-items: stretch; }
+            .controls { justify-content: space-between; }
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 15px; border-radius: 24px; }
+            .logo-text { font-size: 1.2rem; }
+            .site-grid { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; }
+            .site-card { padding: 10px 4px; font-size: 0.75rem; }
+            .site-card .icon { font-size: 1.4rem; }
+            .timer-display .time { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="logo-area">
+            <span class="logo-icon" id="logoIcon">🦾</span>
+            <span class="logo-text">J.A.R.V.I.S.</span>
+        </div>
+        <div class="controls">
+            <select class="voice-select" id="voiceSelect">
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="en-GB" selected>🇬🇧 Британский (J.A.R.V.I.S.)</option>
+                <option value="en-US">🇺🇸 Американский</option>
+                <option value="en-AU">🇦🇺 Австралийский</option>
+                <option value="fr">🇫🇷 Французский</option>
+                <option value="de">🇩🇪 Немецкий</option>
+                <option value="es">🇪🇸 Испанский</option>
+                <option value="it">🇮🇹 Итальянский</option>
+            </select>
+            <div class="status-dot">
+                <span class="dot inactive" id="statusDot"></span>
+                <span id="dotLabel">Готов</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="search-area">
+        <input type="text" class="search-input" id="searchInput" placeholder="🔍 Искать сайт или ввести URL...">
+        <button class="search-btn" id="searchBtn">🔍 Найти</button>
+    </div>
+
+    <div class="mic-section">
+        <button class="mic-btn" id="micBtn">
+            <span>🎤</span> Активировать
+        </button>
+        <div id="status">💬 Скажите: "Открой ВКонтакте" или "Поставь таймер на 5 минут"</div>
+    </div>
+
+    <!-- Таймер -->
+    <div class="timer-display" id="timerDisplay">
+        <span class="label">⏱️ Таймер:</span>
+        <span class="time" id="timerTime">00:00</span>
+        <button class="cancel-btn" id="cancelTimer">✕ Отменить</button>
+    </div>
+
+    <div class="categories" id="categories">
+        <button class="category-btn active" data-category="all">Все</button>
+        <button class="category-btn" data-category="social">Соцсети</button>
+        <button class="category-btn" data-category="video">Видео</button>
+        <button class="category-btn" data-category="search">Поиск</button>
+        <button class="category-btn" data-category="dev">Разработка</button>
+        <button class="category-btn" data-category="shop">Магазины</button>
+        <button class="category-btn" data-category="media">Медиа</button>
+        <button class="category-btn" data-category="other">Другое</button>
+    </div>
+
+    <div class="site-grid" id="siteGrid"></div>
+
+    <div class="commands-hint">
+        <div class="cmd-group">
+            <kbd>🎤 открой YouTube</kbd>
+            <kbd>⏱️ таймер на 5 минут</kbd>
+            <kbd>🕐 время</kbd>
+        </div>
+        <div class="cmd-group">
+            <kbd>👋 привет</kbd>
+            <kbd>🙏 спасибо</kbd>
+            <kbd>❓ как дела</kbd>
+        </div>
+        <span class="stats" id="stats">🌐 50+ сайтов</span>
+    </div>
+</div>
+
+<script>
+    // ============================================
+    //  БАЗА САЙТОВ
+    // ============================================
+    const SITE_DB = [
+        { name: 'ВКонтакте', url: 'https://vk.com', icon: '💙', category: 'social', keywords: ['вк', 'контакт'] },
+        { name: 'Одноклассники', url: 'https://ok.ru', icon: '🟠', category: 'social', keywords: ['однокл', 'ок'] },
+        { name: 'Telegram', url: 'https://t.me', icon: '✈️', category: 'social', keywords: ['телеграм', 'тг'] },
+        { name: 'Instagram', url: 'https://instagram.com', icon: '📸', category: 'social', keywords: ['инста', 'инстаграм'] },
+        { name: 'Twitter', url: 'https://twitter.com', icon: '🐦', category: 'social', keywords: ['твиттер', 'твит'] },
+        { name: 'YouTube', url: 'https://youtube.com', icon: '▶️', category: 'video', keywords: ['ютуб', 'туб'] },
+        { name: 'Rutube', url: 'https://rutube.ru', icon: '📺', category: 'video', keywords: ['рутуб'] },
+        { name: 'Google', url: 'https://google.com', icon: '🔍', category: 'search', keywords: ['гугл'] },
+        { name: 'Яндекс', url: 'https://yandex.ru', icon: '🌐', category: 'search', keywords: ['яндекс'] },
+        { name: 'GitHub', url: 'https://github.com', icon: '🐙', category: 'dev', keywords: ['гитхаб', 'гит'] },
+        { name: 'Stack Overflow', url: 'https://stackoverflow.com', icon: '🧑‍💻', category: 'dev', keywords: ['стек'] },
+        { name: 'Ozon', url: 'https://ozon.ru', icon: '🛍️', category: 'shop', keywords: ['озон'] },
+        { name: 'Wildberries', url: 'https://wildberries.ru', icon: '🛒', category: 'shop', keywords: ['вайлд', 'вб'] },
+        { name: 'Spotify', url: 'https://open.spotify.com', icon: '🎵', category: 'media', keywords: ['спотифай'] },
+        { name: 'Wikipedia', url: 'https://wikipedia.org', icon: '📚', category: 'media', keywords: ['вики'] },
+        { name: 'ChatGPT', url: 'https://chat.openai.com', icon: '🤖', category: 'other', keywords: ['чатгпт', 'gpt'] },
+        { name: 'DeepSeek', url: 'https://chat.deepseek.com', icon: '🤯', category: 'other', keywords: ['дипсик'] },
+        { name: 'Reddit', url: 'https://reddit.com', icon: '🤖', category: 'social', keywords: ['реддит'] },
+        { name: 'TikTok', url: 'https://tiktok.com', icon: '🎵', category: 'social', keywords: ['тикток'] },
+        { name: 'Pinterest', url: 'https://pinterest.com', icon: '📌', category: 'social', keywords: ['пинтерест'] },
+        { name: 'LinkedIn', url: 'https://linkedin.com', icon: '💼', category: 'social', keywords: ['линкедин'] },
+        { name: 'Facebook', url: 'https://facebook.com', icon: '👍', category: 'social', keywords: ['фейсбук'] },
+        { name: 'Discord', url: 'https://discord.com', icon: '🎮', category: 'social', keywords: ['дискорд'] },
+        { name: 'Twitch', url: 'https://twitch.tv', icon: '🎥', category: 'social', keywords: ['твич'] },
+        { name: 'Vimeo', url: 'https://vimeo.com', icon: '🎬', category: 'video', keywords: ['вимео'] },
+        { name: 'DuckDuckGo', url: 'https://duckduckgo.com', icon: '🦆', category: 'search', keywords: ['дакдакго'] },
+        { name: 'Mail.ru', url: 'https://mail.ru', icon: '📫', category: 'search', keywords: ['мейл', 'почта'] },
+        { name: 'GitLab', url: 'https://gitlab.com', icon: '🦊', category: 'dev', keywords: ['гитлаб'] },
+        { name: 'CodePen', url: 'https://codepen.io', icon: '✏️', category: 'dev', keywords: ['кодпен'] },
+        { name: 'AliExpress', url: 'https://aliexpress.com', icon: '📦', category: 'shop', keywords: ['али'] },
+        { name: 'Amazon', url: 'https://amazon.com', icon: '🛒', category: 'shop', keywords: ['амазон'] },
+        { name: 'Avito', url: 'https://avito.ru', icon: '🏪', category: 'shop', keywords: ['авито'] },
+        { name: 'Kinopoisk', url: 'https://kinopoisk.ru', icon: '🎬', category: 'media', keywords: ['кинопоиск'] },
+        { name: 'IMDb', url: 'https://imdb.com', icon: '🎞️', category: 'media', keywords: ['имдб'] },
+        { name: 'Habr', url: 'https://habr.com', icon: '📰', category: 'media', keywords: ['хабр'] },
+        { name: 'Gmail', url: 'https://gmail.com', icon: '📧', category: 'other', keywords: ['джимейл'] },
+        { name: 'Google Drive', url: 'https://drive.google.com', icon: '☁️', category: 'other', keywords: ['диск'] },
+        { name: 'Google Maps', url: 'https://maps.google.com', icon: '🗺️', category: 'other', keywords: ['карты'] },
+        { name: 'Translate', url: 'https://translate.google.com', icon: '🌍', category: 'other', keywords: ['переводчик'] },
+        { name: 'Figma', url: 'https://figma.com', icon: '🎨', category: 'other', keywords: ['фигма'] },
+        { name: 'Notion', url: 'https://notion.so', icon: '📝', category: 'other', keywords: ['ноушн'] },
+        { name: 'СберБанк', url: 'https://sberbank.ru', icon: '🏦', category: 'other', keywords: ['сбер'] },
+        { name: 'Tinkoff', url: 'https://tinkoff.ru', icon: '💳', category: 'other', keywords: ['тинкофф'] },
+    ];
+
+    // ============================================
+    //  ПЕРЕМЕННЫЕ
+    // ============================================
+    let currentCategory = 'all';
+    let searchQuery = '';
+    let recognition = null;
+    let isListening = false;
+    let micPermissionGranted = false;
+    let timerInterval = null;
+    let timerEnd = null;
+    let timerSeconds = 0;
+
+    const grid = document.getElementById('siteGrid');
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const micBtn = document.getElementById('micBtn');
+    const statusEl = document.getElementById('status');
+    const statusDot = document.getElementById('statusDot');
+    const dotLabel = document.getElementById('dotLabel');
+    const statsEl = document.getElementById('stats');
+    const logoIcon = document.getElementById('logoIcon');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const timerTime = document.getElementById('timerTime');
+    const cancelTimerBtn = document.getElementById('cancelTimer');
+
+    // ============================================
+    //  ПОЛУЧЕНИЕ РАЗРЕШЕНИЯ НА МИКРОФОН
+    // ============================================
+    async function requestMicPermission() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            micPermissionGranted = true;
+            stream.getTracks().forEach(track => track.stop());
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // ============================================
+    //  ГОЛОСОВОЙ ОТВЕТ
+    // ============================================
+    function speak(text, callback) {
+        if (!('speechSynthesis' in window)) {
+            if (callback) callback();
+            return;
+        }
+
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        const lang = voiceSelect.value;
+        utterance.lang = lang;
+
+        // Настройка скорости и тона для J.A.R.V.I.S. стиля
+        if (lang === 'en-GB') {
+            utterance.rate = 0.85;
+            utterance.pitch = 1.0;
+        } else if (lang === 'ru') {
+            utterance.rate = 0.9;
+            utterance.pitch = 1.0;
+        } else {
+            utterance.rate = 0.9;
+            utterance.pitch = 1.0;
+        }
+
+        // Ищем подходящий голос
+        const voices = window.speechSynthesis.getVoices();
+        let selectedVoice = voices.find(v => v.lang.includes(lang) && v.name.includes('Google'));
+        if (!selectedVoice) {
+            selectedVoice = voices.find(v => v.lang.includes(lang));
+        }
+        if (selectedVoice) utterance.voice = selectedVoice;
+
+        // Анимация
+        logoIcon.classList.add('speaking');
+        setTimeout(() => logoIcon.classList.remove('speaking'), 2000);
+
+        utterance.onend = () => { if (callback) callback(); };
+        utterance.onerror = () => { if (callback) callback(); };
+
+        window.speechSynthesis.speak(utterance);
+    }
+
+    // ============================================
+    //  ЗВУКОВЫЕ ЭФФЕКТЫ
+    // ============================================
+    function playBeep(type = 'confirm') {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            if (type === 'confirm') {
+                oscillator.frequency.value = 880;
+                oscillator.type = 'sine';
+                gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                oscillator.start();
+                setTimeout(() => { oscillator.frequency.value = 1100; }, 100);
+                setTimeout(() => { oscillator.stop(); }, 300);
+            } else if (type === 'start') {
+                oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.3);
+                oscillator.type = 'sine';
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                oscillator.start();
+                setTimeout(() => { oscillator.stop(); }, 300);
+            } else if (type === 'timer') {
+                oscillator.frequency.value = 880;
+                oscillator.type = 'square';
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                oscillator.start();
+                setTimeout(() => { oscillator.stop(); }, 500);
+            }
+        } catch (e) {}
+    }
+
+    // ============================================
+    //  ТАЙМЕР
+    // ============================================
+    function startTimer(minutes) {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+
+        timerSeconds = minutes * 60;
+        timerEnd = Date.now() + timerSeconds * 1000;
+        timerDisplay.classList.add('active');
+        updateTimerDisplay();
+
+        const lang = voiceSelect.value;
+        const msg = lang === 'ru' 
+            ? `Таймер на ${minutes} минут установлен, сэр.`
+            : `Timer set for ${minutes} minutes, sir.`;
+        speak(msg);
+
+        timerInterval = setInterval(() => {
+            const remaining = Math.max(0, Math.floor((timerEnd - Date.now()) / 1000));
+            timerSeconds = remaining;
+            updateTimerDisplay();
+
+            if (remaining <= 0) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                timerDisplay.classList.remove('active');
+                playBeep('timer');
+                const msg2 = lang === 'ru'
+                    ? 'Внимание! Таймер истёк, сэр!'
+                    : 'Attention! Timer has expired, sir!';
+                speak(msg2);
+                // Повторяем 3 раза
+                setTimeout(() => speak(msg2), 1500);
+                setTimeout(() => speak(msg2), 3000);
+            }
+        }, 1000);
+    }
+
+    function updateTimerDisplay() {
+        const mins = Math.floor(timerSeconds / 60);
+        const secs = timerSeconds % 60;
+        timerTime.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function cancelTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        timerDisplay.classList.remove('active');
+        const lang = voiceSelect.value;
+        speak(lang === 'ru' ? 'Таймер отменён, сэр.' : 'Timer cancelled, sir.');
+    }
+
+    cancelTimerBtn.addEventListener('click', cancelTimer);
+
+    // ============================================
+    //  ОТКРЫТИЕ САЙТА
+    // ============================================
+    function openSite(url, name) {
+        if (!url) return false;
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+        
+        try {
+            const win = window.open(url, '_blank');
+            if (!win || win.closed || typeof win.closed === 'undefined') {
+                window.location.href = url;
+            }
+            
+            const lang = voiceSelect.value;
+            const phrases = lang === 'ru' 
+                ? [`Открываю ${name || 'сайт'}, сэр.`, `${name || 'Сайт'} открыт, сэр.`]
+                : [`Opening ${name || 'the site'}, sir.`, `${name || 'Site'} is ready, sir.`];
+            const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+            
+            setStatus(`✅ ${name || 'Сайт'} открыт`, 'success');
+            playBeep('confirm');
+            speak(phrase);
+            return true;
+        } catch (e) {
+            setStatus(`❌ Не удалось открыть`, 'error');
+            speak(lang === 'ru' ? 'Не удалось открыть сайт, сэр.' : 'Could not open the site, sir.');
+            return false;
+        }
+    }
+
+    // ============================================
+    //  ОТРИСОВКА САЙТОВ
+    // ============================================
+    function renderSites() {
+        let filtered = SITE_DB;
+        if (currentCategory !== 'all') {
+            filtered = filtered.filter(s => s.category === currentCategory);
+        }
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase().trim();
+            filtered = filtered.filter(s => {
+                return s.name.toLowerCase().includes(q) ||
+                       s.keywords.some(k => k.includes(q) || q.includes(k));
+            });
+        }
+
+        if (filtered.length === 0) {
+            grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:#556688;padding:30px;">😕 Ничего не найдено, сэр.</div>`;
+            statsEl.textContent = '🔍 0 результатов';
+            return;
+        }
+
+        grid.innerHTML = filtered.map(site => `
+            <div class="site-card" data-url="${site.url}" data-name="${site.name}">
+                <span class="icon">${site.icon}</span>
+                <span class="name">${site.name}</span>
+                <span class="badge">${site.category}</span>
+            </div>
+        `).join('');
+
+        document.querySelectorAll('.site-card').forEach(card => {
+            card.addEventListener('click', function() {
+                openSite(this.dataset.url, this.dataset.name);
+            });
+        });
+
+        statsEl.textContent = `🌐 ${filtered.length} сайтов`;
+    }
+
+    function setStatus(text, type = '') {
+        statusEl.textContent = text;
+        statusEl.className = type;
+    }
+
+    function setDotState(state) {
+        statusDot.className = 'dot';
+        if (state === 'listening') {
+            statusDot.classList.add('listening');
+            dotLabel.textContent = 'Слушаю...';
+        } else if (state === 'inactive') {
+            statusDot.classList.add('inactive');
+            dotLabel.textContent = 'Готов';
+        } else {
+            statusDot.classList.remove('inactive', 'listening');
+            dotLabel.textContent = 'Готов';
+        }
+    }
+
+    // ============================================
+    //  КАТЕГОРИИ
+    // ============================================
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentCategory = this.dataset.category;
+            renderSites();
+        });
+    });
+
+    // ============================================
+    //  ПОИСК
+    // ============================================
+    function doSearch() {
+        const query = searchInput.value.trim();
+        if (query) {
+            const found = SITE_DB.find(s => 
+                s.name.toLowerCase().includes(query.toLowerCase()) ||
+                s.keywords.some(k => k.includes(query.toLowerCase()))
+            );
+            if (found) {
+                openSite(found.url, found.name);
+            } else {
+                openSite(`https://google.com/search?q=${encodeURIComponent(query)}`, `Поиск: ${query}`);
+            }
+        }
+        searchQuery = query;
+        renderSites();
+    }
+
+    searchBtn.addEventListener('click', doSearch);
+    searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+
+    // ============================================
+    //  ОБРАБОТЧИК КОМАНД
+    // ============================================
+    function handleVoiceCommand(transcript) {
+        const text = transcript.toLowerCase().trim();
+        console.log('🎤 Распознано:', text);
+        setStatus(`🗣️ Вы сказали: "${text}"`, 'processing');
+
+        const lang = voiceSelect.value;
+
+        // --- ТАЙМЕР ---
+        const timerMatch = text.match(/таймер\s*на\s*(\d+)\s*(минут|мин|минуты|минуту)/i);
+        if (timerMatch) {
+            const minutes = parseInt(timerMatch[1]);
+            if (minutes > 0 && minutes <= 60) {
+                startTimer(minutes);
+                return;
+            }
+        }
+
+        // --- ВРЕМЯ ---
+        if (text.includes('время') || text.includes('который час') || text.includes('time') || text.includes('по мск')) {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            const msg = lang === 'ru' 
+                ? `Сейчас ${hours}:${mins} по Московскому времени, сэр.`
+                : `It's ${hours}:${mins} Moscow time, sir.`;
+            speak(msg);
+            setStatus(`🕐 ${hours}:${mins} МСК`, 'success');
+            return;
+        }
+
+        // --- ПРИВЕТСТВИЯ ---
+        if (text.includes('привет') || text.includes('hello') || text.includes('hi') || text.includes('здравствуй')) {
+            const msgs = lang === 'ru'
+                ? ['Здравствуйте, сэр. Чем могу помочь?', 'Добрый вечер, сэр. Я готов.', 'Приветствую, сэр. Жду ваших команд.']
+                : ['Good evening, sir. How may I assist you?', 'Hello, sir. I am ready.', 'Greetings, sir. Awaiting your command.'];
+            speak(msgs[Math.floor(Math.random() * msgs.length)]);
+            setStatus('👋 Приветствую, сэр!', 'success');
+            return;
+        }
+
+        if (text.includes('спасибо') || text.includes('thank you') || text.includes('thanks') || text.includes('благодарю')) {
+            speak(lang === 'ru' ? 'Всегда к вашим услугам, сэр.' : 'Always at your service, sir.');
+            setStatus('🙏 Пожалуйста, сэр!', 'success');
+            return;
+        }
+
+        if (text.includes('как дела') || text.includes('how are you') || text.includes('статус') || text.includes('status')) {
+            speak(lang === 'ru' ? 'Все системы работают отлично, сэр. Готов к выполнению команд.' : 'All systems are functioning perfectly, sir. Ready for your command.');
+            setStatus('✅ Все системы готовы, сэр!', 'success');
+            return;
+        }
+
+        // --- ОТМЕНА ТАЙМЕРА ---
+        if (text.includes('отменить таймер') || text.includes('cancel timer') || text.includes('убрать таймер')) {
+            cancelTimer();
+            return;
+        }
+
+        // --- ОТКРЫТИЕ САЙТА ---
+        let found = null;
+        let command = text.replace(/(открой|open|покажи|show|перейди|go to|найди|find)\s*/i, '').trim();
+
+        for (let site of SITE_DB) {
+            const nameLower = site.name.toLowerCase();
+            if (nameLower.includes(command) || command.includes(nameLower)) {
+                found = site;
+                break;
+            }
+            for (let kw of site.keywords) {
+                if (command.includes(kw) || kw.includes(command)) {
+                    found = site;
+                    break;
+                }
+            }
+            if (found) break;
+        }
+
+        if (found) {
+            speak(lang === 'ru' ? `Открываю ${found.name}, сэр.` : `Opening ${found.name}, sir.`, () => {
+                openSite(found.url, found.name);
+            });
+        } else {
+            // Если не нашли — ищем в Google
+            const query = encodeURIComponent(command || text);
+            speak(lang === 'ru' ? `Ищу в интернете, сэр.` : `Searching the internet, sir.`, () => {
+                openSite(`https://google.com/search?q=${query}`, `Поиск: ${command || text}`);
+            });
+        }
+    }
+
+    // ============================================
+    //  ГОЛОСОВОЕ РАСПОЗНАВАНИЕ
+    // ============================================
+    function initSpeech() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            setStatus('❌ Браузер не поддерживает голос', 'error');
+            micBtn.disabled = true;
+            micBtn.innerHTML = '⛔ Не поддерживается';
+            return false;
+        }
+
+        recognition = new SpeechRecognition();
+        recognition.lang = 'ru-RU';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+            isListening = true;
+            micBtn.classList.add('listening');
+            micBtn.innerHTML = '🔴 Слушаю...';
+            setDotState('listening');
+            setStatus('🎤 Слушаю вашу команду, сэр...');
+            playBeep('start');
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            micBtn.classList.remove('listening');
+            micBtn.innerHTML = '🎤 Активировать';
+            setDotState('inactive');
+            if (!statusEl.textContent.includes('✅')) {
+                setStatus('💬 Скажите: "Открой YouTube" или "Поставь таймер на 5 минут"');
+            }
+        };
+
+        recognition.onerror = (event) => {
+            const lang = voiceSelect.value;
+            if (event.error === 'not-allowed') {
+                setStatus('❌ Разрешите доступ к микрофону', 'error');
+                speak(lang === 'ru' ? 'Пожалуйста, разрешите доступ к микрофону, сэр.' : 'Please allow microphone access, sir.');
+            } else if (event.error === 'no-speech') {
+                setStatus('🔇 Речь не обнаружена, сэр', 'error');
+            } else {
+                setStatus(`❌ Ошибка: ${event.error}`, 'error');
+            }
+            micBtn.classList.remove('listening');
+            micBtn.innerHTML = '🎤 Активировать';
+            setDotState('inactive');
+            isListening = false;
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[event.results.length - 1][0].transcript.trim();
+            if (transcript) {
+                handleVoiceCommand(transcript);
+            }
+        };
+
+        return true;
+    }
+
+    // ============================================
+    //  КНОПКА МИКРОФОНА
+    // ============================================
+    micBtn.addEventListener('click', async function() {
+        if (!micPermissionGranted) {
+            const granted = await requestMicPermission();
+            if (!granted) {
+                setStatus('❌ Нужен доступ к микрофону', 'error');
+                return;
+            }
+        }
+
+        if (!recognition) {
+            if (!initSpeech()) return;
+        }
+
+        if (isListening) {
+            recognition.stop();
+            return;
+        }
+
+        try {
+            recognition.start();
+        } catch (e) {
+            if (e.name === 'InvalidStateError') {
+                recognition.stop();
+                setTimeout(() => recognition.start(), 200);
+            }
+        }
+    });
+
+    // ============================================
+    //  АВТОЗАПУСК
+    // ============================================
+    async function autoStart() {
+        const granted = await requestMicPermission();
+        if (granted) {
+            setTimeout(() => {
+                if (recognition) {
+                    try {
+                        recognition.start();
+                        const lang = voiceSelect.value;
+                        speak(lang === 'ru' 
+                            ? 'J.A.R.V.I.S. готов, сэр. Чем могу помочь?'
+                            : 'J.A.R.V.I.S. is ready, sir. How may I assist you?'
+                        );
+                    } catch (e) {}
+                }
+            }, 1500);
+        }
+    }
+
+    // ============================================
+    //  ЗАПУСК
+    // ============================================
+    renderSites();
+    initSpeech();
+
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+    };
+
+    setTimeout(autoStart, 1500);
+
+    console.log('🦾 J.A.R.V.I.S. 6.0 готов, сэр!');
+    console.log('🎤 Команды: "Открой YouTube", "Таймер на 5 минут", "Время"');
+</script>
+</body>
+</html>
